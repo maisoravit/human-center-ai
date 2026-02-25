@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Maze Mouse | The Immersive Iceberg Journey</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&display=swap');
+    :root{
+      --accent:#0ea5e9;
+      --accent2:#10b981;
+      --pulse: 1.0;
+      --blur: 0px;
+      --grain: 0.12;
+    }
+    body{font-family:'Anuphan',sans-serif;background:#050505;color:#f8fafc;}
+    .overlay{background:linear-gradient(to bottom, rgba(0,0,0,.15), rgba(0,0,0,.92)); position:absolute; inset:0; z-index:1;}
+    .fade-in{animation:fadeIn .8s ease-out forwards;}
+    .fade-in-slow{animation:fadeIn 1.5s ease-out forwards;}
+    @keyframes fadeIn{from{opacity:0; transform:translateY(15px);} to{opacity:1; transform:translateY(0);}}
+    
+    .breathe-circle {
+      animation: breatheAnimation 6s infinite ease-in-out;
+    }
+    @keyframes breatheAnimation {
+      0% { transform: scale(0.8); opacity: 0.3; box-shadow: 0 0 10px var(--accent); }
+      50% { transform: scale(1.6); opacity: 0.8; box-shadow: 0 0 50px var(--accent); }
+      100% { transform: scale(0.8); opacity: 0.3; box-shadow: 0 0 10px var(--accent); }
+    }
+
+    .side-panel{transition:all .8s cubic-bezier(.4,0,.2,1); cursor:pointer; position:relative; overflow:hidden; flex:1;}
+    .side-panel:hover{flex:1.5;}
+    .audio-control{position:fixed; bottom:18px; right:18px; z-index:100; opacity:.7; transition: opacity 0.3s;}
+    .audio-control:hover{opacity:1;}
+    .bg-stage{
+      transition: filter 800ms ease, transform 800ms ease, background 800ms ease;
+      filter: blur(var(--blur)) saturate(1.05) contrast(1.05);
+      transform: scale(var(--pulse));
+      background: radial-gradient(1100px 600px at 20% 25%, rgba(14,165,233,.15), rgba(0,0,0,0)),
+                  linear-gradient(180deg, #06080b, #050505);
+    }
+    .bg-stage.rural{
+      background: radial-gradient(1100px 600px at 20% 25%, rgba(16,185,129,.13), rgba(0,0,0,0)),
+                  linear-gradient(180deg, #060b08, #050505);
+    }
+    .bg-stage.mixed{
+      background: radial-gradient(1100px 600px at 20% 25%, rgba(167,139,250,.12), rgba(0,0,0,0)),
+                  linear-gradient(180deg, #07060b, #050505);
+    }
+    .grain::before{
+      content:"";
+      position:absolute; inset:-40px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+      opacity: var(--grain);
+      mix-blend-mode: overlay;
+      pointer-events:none;
+      transform: rotate(2deg);
+    }
+    .choice-btn{
+      transition: transform .18s ease, background .25s ease, border-color .25s ease;
+    }
+    .choice-btn:active{ transform: scale(.985); }
+    .glow{
+      box-shadow: 0 0 0 1px rgba(255,255,255,.05), 0 0 30px rgba(14,165,233,.08);
+    }
+    .glow.rural{
+      box-shadow: 0 0 0 1px rgba(255,255,255,.05), 0 0 30px rgba(16,185,129,.08);
+    }
+    .glow.mixed{
+      box-shadow: 0 0 0 1px rgba(255,255,255,.05), 0 0 30px rgba(167,139,250,.08);
+    }
+    .typing::after{
+      content:"▋";
+      animation: blink 1s infinite;
+      margin-left: 2px;
+      opacity:.7;
+    }
+    @keyframes blink{ 0%,49%{opacity:0;} 50%,100%{opacity:.7;} }
+    
+    .echo-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+    .echo-card:hover {
+      background: rgba(255, 255, 255, 0.07);
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body class="overflow-hidden">
+
+  <!-- Audio Source -->
+  <audio id="ambient-audio" loop></audio>
+
+  <div class="audio-control flex items-center gap-2 bg-black/50 p-2 rounded-full border border-white/10 backdrop-blur hidden" id="audio-ui">
+    <span id="audio-status" class="text-[10px] uppercase tracking-widest px-2 text-white/80">Sensory On</span>
+    <button onclick="toggleMute()" class="w-8 h-8 flex items-center justify-center bg-white/10 rounded-full hover:bg-white/20 transition" title="Toggle sound">🔈</button>
+  </div>
+
+  <!-- Entry Gate (Unlock Audio) -->
+  <div id="entry-gate" class="fixed inset-0 z-[100] bg-[#050505] flex flex-col items-center justify-center p-6 transition-opacity duration-1000">
+    <div class="text-center fade-in">
+      <div class="text-6xl mb-6 drop-shadow-lg">🎧</div>
+      <h1 class="text-2xl md:text-3xl font-light text-white mb-4 tracking-wide">สวมหูฟังเพื่อประสบการณ์ที่ดีที่สุด</h1>
+      <p class="text-white/40 mb-10 text-sm md:text-base max-w-md mx-auto leading-relaxed">พื้นที่นี้มีการใช้เสียงจำลองบรรยากาศ (Sensory Audio) เพื่อพาคุณดำดิ่งไปสำรวจภูเขาน้ำแข็งในใจคุณ</p>
+      
+      <button onclick="enterExperience()" class="px-8 py-4 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium transition-all transform hover:scale-105 tracking-wide">
+        แตะเพื่อเข้าสู่พื้นที่ระหว่างสองโลก
+      </button>
+    </div>
+  </div>
+
+  <!-- Landing Page -->
+  <div id="landing-page" class="flex flex-col md:flex-row h-screen w-full">
+    <div onclick="initQuiz('city')" class="side-panel group bg-[url('img/City.jpg')] bg-cover bg-center">
+      <div class="overlay"></div>
+      <div class="relative z-10 flex flex-col items-center justify-center h-full p-8 text-center">
+        <h2 class="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg">บ้านเกิด → เมืองใหญ่</h2>
+        <p class="text-sky-300 opacity-0 group-hover:opacity-100 transition duration-500 font-light text-lg">
+          “แบกความหวังมาแลกโอกาส...ในพื้นที่ที่ไม่มีใครรู้จักเรา”
+        </p>
+      </div>
+    </div>
+
+    <div onclick="initQuiz('rural')" class="side-panel group bg-[url('img/Countryside.jpg')] bg-cover bg-center border-t md:border-t-0 md:border-l border-white/10">
+      <div class="overlay"></div>
+      <div class="relative z-10 flex flex-col items-center justify-center h-full p-8 text-center">
+        <h2 class="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg">เมืองใหญ่ → ธรรมชาติ</h2>
+        <p class="text-emerald-300 opacity-0 group-hover:opacity-100 transition duration-500 font-light text-lg">
+          “ทิ้งความสำเร็จตามแบบแผน...เพื่อกลับมาได้ยินเสียงตัวเอง”
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quiz Page -->
+  <div id="quiz-page" class="hidden fixed inset-0 z-50">
+    <div class="w-full h-1.5 bg-slate-900">
+      <div id="progress" class="h-full transition-all duration-700 ease-out" style="width:0%; background: var(--accent)"></div>
+    </div>
+
+    <div id="stage" class="bg-stage grain relative h-full w-full">
+      <div class="absolute inset-0 z-[2] flex flex-col items-center justify-center p-6 overflow-y-auto">
+        <div class="max-w-3xl w-full fade-in py-10 mt-10 md:mt-0">
+          <div class="flex items-center justify-between mb-4">
+            <span id="category-tag" class="text-xs tracking-widest uppercase font-semibold" style="color: var(--accent)">Category</span>
+            <span id="step-tag" class="text-xs tracking-widest uppercase text-white/40 font-mono">1 / 12</span>
+          </div>
+
+          <h3 id="question-text" class="text-2xl md:text-[2.1rem] font-medium mb-10 leading-[1.4] text-white/95 drop-shadow-md">...</h3>
+
+          <div id="options-grid" class="grid grid-cols-1 gap-4"></div>
+
+          <div class="mt-10 flex items-center justify-between text-xs text-white/30">
+            <span id="arc-tag">Phase: Surface</span>
+            <button id="back-btn" class="hidden hover:text-white transition" onclick="goBack()">← ย้อนกลับ</button>
+          </div>
+
+          <div id="micro-reflection" class="mt-6 text-sm md:text-base text-white/80 border-l-2 pl-4 hidden fade-in font-light italic"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Breathing Space -->
+  <div id="breathe-page" class="hidden fixed inset-0 z-[55] bg-black flex flex-col items-center justify-center p-6 transition-opacity duration-1000">
+    <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/80 z-0"></div>
+    <h2 id="breathe-instruction" class="text-2xl md:text-3xl text-white/70 font-light mb-16 text-center h-8 transition-opacity duration-1000 z-10">...</h2>
+    <div class="breathe-circle w-32 h-32 md:w-48 md:h-48 rounded-full border border-white/10 bg-white/5 flex items-center justify-center z-10 backdrop-blur-sm">
+      <span class="text-5xl opacity-50 drop-shadow-lg" id="breathe-icon">🍃</span>
+    </div>
+  </div>
+
+  <!-- Result Page -->
+  <div id="result-page" class="hidden fixed inset-0 z-[60] overflow-y-auto p-6 md:p-16">
+    <div class="max-w-5xl mx-auto space-y-10 pb-20">
+
+      <!-- Header -->
+      <div class="space-y-4 fade-in text-center md:text-left mt-8 md:mt-0">
+        <h1 id="result-headline" class="text-4xl md:text-6xl font-bold drop-shadow-lg tracking-tight"></h1>
+        <p id="result-sub" class="text-slate-300 text-lg md:text-xl font-light leading-relaxed max-w-3xl"></p>
+      </div>
+
+      <!-- Data & Iceberg Grid -->
+      <div class="grid md:grid-cols-2 gap-8 fade-in-slow" style="animation-delay: 0.3s;">
+        
+        <!-- Surface (พฤติกรรม & โครงสร้าง) -->
+        <div class="bg-white/5 rounded-3xl p-8 border border-white/10 shadow-2xl backdrop-blur-md relative overflow-hidden">
+          <div class="absolute top-0 right-0 p-4 opacity-10 text-6xl">🌊</div>
+          <h2 class="text-xs uppercase tracking-widest text-white/50 mb-6 font-semibold">ยอดภูเขาน้ำแข็ง (Surface Level)</h2>
+
+          <div class="space-y-7">
+            <div>
+              <div class="flex justify-between text-sm mb-2 text-white/80">
+                <span>ดึงดูดเข้าหา "เมือง" (โอกาส, การดิ้นรน, ความเร็ว)</span>
+                <span id="pct-city" class="font-mono text-xs">0%</span>
+              </div>
+              <div class="h-2 bg-black/40 rounded-full overflow-hidden">
+                <div id="bar-city" class="h-full rounded-full transition-all duration-1000 ease-out" style="width:0%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-sm mb-2 text-white/80">
+                <span>ดึงดูดเข้าหา "ธรรมชาติ/บ้าน" (ความสงบ, รากเหง้า)</span>
+                <span id="pct-nature" class="font-mono text-xs">0%</span>
+              </div>
+              <div class="h-2 bg-black/40 rounded-full overflow-hidden">
+                <div id="bar-nature" class="h-full rounded-full transition-all duration-1000 ease-out" style="width:0%"></div>
+              </div>
+            </div>
+
+            <div class="pt-5 border-t border-white/10">
+              <div class="flex justify-between text-sm mb-2 text-white/80">
+                <span>ระดับ Privilege (เครื่องมือช่วยลดแรงเสียดทาน)</span>
+                <span id="pct-priv" class="font-mono text-xs">0%</span>
+              </div>
+              <div class="h-2 bg-black/40 rounded-full overflow-hidden">
+                <div id="bar-priv" class="h-full rounded-full transition-all duration-1000 ease-out bg-yellow-500/80" style="width:0%"></div>
+              </div>
+              <p class="text-[13px] text-white/40 mt-3 leading-relaxed font-light">
+                *ทางเลือก (Privilege) ไม่ใช่เรื่องผิด แต่ช่วยอธิบายว่าทำไมบางครั้งคุณถึงเหนื่อยกว่าคนอื่น เพราะคุณใช้ "แรงกาย/ใจ" เข้าแลกในสิ่งที่คนอื่นใช้ "ระบบ/ทุน" แก้ปัญหา
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Deep Seeing (มิติภายใน) -->
+        <div class="bg-white/5 rounded-3xl p-8 border border-white/10 shadow-2xl backdrop-blur-md relative overflow-hidden">
+          <div class="absolute bottom-0 right-0 p-4 opacity-10 text-6xl">⚓</div>
+          <h2 class="text-xs uppercase tracking-widest text-white/50 mb-6 font-semibold">ใต้ผิวน้ำ (Deep Seeing)</h2>
+
+          <div class="space-y-6 text-slate-200 font-light">
+            <div class="pl-4 border-l-2" id="res-sensory-border">
+              <span class="text-xs text-white/40 block mb-1 uppercase tracking-wider">Sensory & Coping</span>
+              <p id="res-sensory" class="leading-relaxed"></p>
+            </div>
+            <div class="pl-4 border-l-2 border-white/20">
+              <span class="text-xs text-white/40 block mb-1 uppercase tracking-wider">Inner Power & Mask</span>
+              <p id="res-power" class="leading-relaxed"></p>
+            </div>
+            <div class="pl-4 border-l-2 border-white/20">
+              <span class="text-xs text-white/40 block mb-1 uppercase tracking-wider">Core Values & Needs</span>
+              <p id="res-values" class="leading-relaxed"></p>
+            </div>
+          </div>
+
+          <!-- Archetype Totem -->
+          <div class="mt-8 rounded-2xl bg-black/30 border border-white/5 p-4 flex items-center gap-4 hover:bg-black/50 transition">
+            <div id="res-icon" class="text-4xl drop-shadow-md">✨</div>
+            <div>
+              <p class="text-white/90 font-medium text-base" id="res-totem-title"></p>
+              <p class="text-xs text-white/50 mt-1 leading-snug font-light italic" id="res-totem-desc"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Perspective Taking -->
+      <div class="bg-white/5 rounded-3xl p-8 border border-white/10 shadow-xl fade-in-slow" style="animation-delay: 0.6s;">
+        <h2 class="text-xs uppercase tracking-widest text-white/50 mb-5 font-semibold">มองในมุมกลับ (Perspective Taking)</h2>
+        <p id="opposite-story" class="text-slate-300 leading-relaxed text-base md:text-lg font-light"></p>
+        <p id="final-quote" class="mt-6 text-white/80 italic text-xl border-l-4 pl-5 py-1 border-white/30 font-medium"></p>
+      </div>
+
+      <!-- Care Package (ของขวัญสำหรับหัวใจ) -->
+      <div class="bg-gradient-to-br from-white/10 to-white/5 rounded-3xl p-8 border border-white/20 shadow-2xl fade-in-slow relative" style="animation-delay: 0.8s;">
+        <div class="absolute -top-4 -right-4 text-5xl drop-shadow-lg">🎁</div>
+        <h2 class="text-xl md:text-2xl font-bold text-white mb-2">Care Package (ของขวัญสำหรับหัวใจ)</h2>
+        <p class="text-white/60 mb-8 font-light text-sm md:text-base">เพราะการดำดิ่งลงไปสำรวจตัวเองอาจทำให้คุณเหนื่อยล้า... เราขอแนะนำ 'สื่อเยียวยาใจ' ที่เหมาะกับบาดแผลและตัวตนที่คุณเพิ่งค้นพบ เก็บไว้ดูในวันที่คุณต้องการพื้นที่ปลอดภัยนะ</p>
+
+        <div class="grid md:grid-cols-3 gap-6">
+          <div class="bg-black/30 rounded-2xl p-6 border border-white/10 hover:bg-black/50 transition transform hover:-translate-y-1">
+            <div class="text-3xl mb-3">🎬</div>
+            <h3 class="text-white font-medium mb-1 tracking-wide">ภาพยนตร์</h3>
+            <p id="cp-movie-title" class="text-[var(--accent)] font-semibold mb-3"></p>
+            <p id="cp-movie-desc" class="text-sm text-white/60 font-light leading-relaxed"></p>
+          </div>
+          <div class="bg-black/30 rounded-2xl p-6 border border-white/10 hover:bg-black/50 transition transform hover:-translate-y-1">
+            <div class="text-3xl mb-3">🎧</div>
+            <h3 class="text-white font-medium mb-1 tracking-wide">บทเพลง</h3>
+            <p id="cp-song-title" class="text-[var(--accent)] font-semibold mb-3"></p>
+            <p id="cp-song-desc" class="text-sm text-white/60 font-light leading-relaxed"></p>
+          </div>
+          <div class="bg-black/30 rounded-2xl p-6 border border-white/10 hover:bg-black/50 transition transform hover:-translate-y-1">
+            <div class="text-3xl mb-3">📖</div>
+            <h3 class="text-white font-medium mb-1 tracking-wide">หนังสือ</h3>
+            <p id="cp-book-title" class="text-[var(--accent)] font-semibold mb-3"></p>
+            <p id="cp-book-desc" class="text-sm text-white/60 font-light leading-relaxed"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Safe Space & Echo Wall -->
+      <div id="safe-space-section" class="bg-[#0a0a0a] rounded-3xl p-8 border border-white/10 shadow-2xl fade-in-slow relative overflow-hidden" style="animation-delay: 1.0s;">
+        <div class="absolute top-0 left-0 w-full h-1" style="background: linear-gradient(90deg, transparent, var(--accent), transparent);"></div>
+        
+        <!-- Input Area -->
+        <div id="vent-container" class="max-w-2xl mx-auto text-center py-4">
+          <h2 class="text-2xl md:text-3xl font-bold text-white mb-3">มีอะไรในใจที่อยากวางมันลงไหม?</h2>
+          <p class="text-white/50 mb-8 text-sm md:text-base font-light">
+            ก่อนกลับไปเผชิญโลกความจริง พื้นที่นี้คือ Safe Space... พิมพ์ระบายสิ่งที่คุณแบกไว้ แล้วทิ้งมันไว้ที่นี่
+          </p>
+          
+          <textarea id="user-reflection" class="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-white placeholder-white/20 focus:outline-none focus:border-[var(--accent)] focus:bg-white/10 transition-all resize-none shadow-inner text-center font-light text-lg" rows="3" placeholder="ลึกๆ แล้ว ตอนนี้คุณอยากบอกอะไรกับตัวเองที่สุด?"></textarea>
+          
+          <div class="mt-6 flex justify-center">
+            <button onclick="submitReflection()" class="px-8 py-4 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium transition-all transform hover:scale-105 flex items-center gap-3">
+              <span>วางความรู้สึกทิ้งไว้ตรงนี้</span>
+              <span class="text-xl">🕊️</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Echo Wall -->
+        <div id="echo-wall-container" class="hidden mt-2">
+          <div class="text-center mb-10 fade-in">
+            <h2 class="text-2xl font-bold text-white mb-2 tracking-wide">กำแพงเสียงสะท้อน</h2>
+            <p class="text-white/50 font-light">คุณได้วางมันลงแล้ว... และคุณไม่ได้เผชิญความรู้สึกนี้เพียงลำพัง</p>
+          </div>
+          
+          <div id="echo-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 fade-in-slow">
+            <!-- JS inserts cards here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-wrap justify-center gap-4 pt-4 pb-12 fade-in-slow" style="animation-delay: 1.2s;">
+        <button onclick="location.reload()" class="px-6 py-3 rounded-full bg-transparent hover:bg-white/5 border border-white/20 text-white/70 transition font-light text-sm">
+          ↻ เริ่มสำรวจใหม่อีกครั้ง
+        </button>
+        <button onclick="copyResult()" class="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white transition font-medium text-sm flex items-center gap-2">
+          <span>แชร์ผลลัพธ์เพื่อส่งต่อความเข้าใจ</span>
+          <span>🔗</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- AUDIO LINKS ---
+    const startAmbient = "sounds/jazz.mp3";
+    const cityAmbient = "sounds/city.mp3";
+    const ruralAmbient = "sounds/rural.mp3"; 
+
+    // --- 12 Deep Questions ---
+    const questions = [
+      {
+        arc:"Phase 1: อาการบนผิวน้ำ",
+        cat:"Sensory / Space",
+        q:"ในเช้าวันหยุดที่คุณเหนื่อยล้าที่สุด สภาพแวดล้อมแบบไหนที่คุณโหยหาให้ตัวเองตื่นขึ้นมาเจอ?",
+        options:[
+          { t:"ห้องเงียบๆ ได้ยินแค่เสียงลมหรือเสียงนก ไม่ต้องรีบไปไหน", city:0, nature:2, priv:0, tag:{ sens:"ร่างกายคุณโหยหา 'ความว่าง' และการหยุดนิ่ง เพื่อชาร์จพลังแบบไม่ต้องพิสูจน์อะไร", power:"คุณลดแรงเสียดทานของโลกด้วยการถอยออกจากความเร่งรีบ", values:"คุณให้ค่ากับความสงบและความปลอดภัยทางใจ" } },
+          { t:"ร้านกาแฟ/พื้นที่คนเดินผ่านเบาๆ ให้รู้สึกว่ายังมีชีวิตชีวา", city:2, nature:0, priv:1, tag:{ sens:"คุณรู้สึกปลอดภัยเมื่อมีความเคลื่อนไหวอยู่รอบตัว แม้ในวันที่พัก", power:"คุณใช้ 'จังหวะเมือง' เป็นพลังพยุงใจ ไม่ให้หลุดจากระบบ", values:"คุณให้ค่ากับการเชื่อมต่อและความคืบหน้า" } },
+          { t:"มุมทำงานเงียบๆ ในเมือง เปิดเพลง/เสียงขาว แล้วจัดระเบียบชีวิตใหม่", city:2, nature:0, priv:2, tag:{ sens:"คุณต้องการควบคุมเสียง/แสง/จังหวะ เพื่อทำให้โลกอยู่ในรูปแบบที่รับไหว", power:"คุณมี 'เครื่องมือ/ทรัพยากร' ที่ช่วยให้จัดการชีวิตได้เร็วขึ้น", values:"คุณให้ค่ากับประสิทธิภาพและการคุมทิศทางชีวิต" } },
+          { t:"อยู่บ้าน/ต่างจังหวัด แต่เปิดคอร์สออนไลน์หรือทำโปรเจกต์เล็กๆ เพื่อโตจากจุดที่ยืน", city:1, nature:2, priv:1, tag:{ sens:"คุณต้องการความสงบ แต่ก็ไม่อยากหยุดพัฒนา", power:"คุณสร้างทางเลือกด้วยการใช้ความพยายามแทนทุน", values:"คุณให้ค่ากับ 'เติบโตโดยไม่ทิ้งตัวตน'" } }
+        ]
+      },
+      {
+        arc:"Phase 1: อาการบนผิวน้ำ",
+        cat:"Power / Privilege",
+        q:"เมื่อมีรายจ่ายก้อนใหญ่แทรกเข้ามาในชีวิตกะทันหัน ความคิดแรกที่แวบเข้ามาในหัวคือ...",
+        options:[
+          { t:"'ต้องหาเงินเพิ่มจากไหน' (คิดถึงการดึงเงินเก็บ หรือหาทางหยิบยืมที่ยากลำบาก)", city:1, nature:1, priv:0, tag:{ sens:"", power:"โครงสร้างชีวิตคุณบีบให้ 'เงิน' เป็นเงื่อนไขหลักที่จำกัดความอิสระ", values:"คุณให้ค่ากับความอยู่รอดและความมั่นคงเป็นอันดับแรก" } },
+          { t:"'เดี๋ยวจัดการโยกเงิน หรือใช้บัตรเครดิตแก้ขัดไปก่อนได้'", city:1, nature:0, priv:2, tag:{ sens:"", power:"คุณมี 'เบาะรองรับ' ทางการเงินหรือเครือข่ายที่ทำให้ล้มแล้วไม่เจ็บหนัก", values:"คุณมีพื้นที่ให้โฟกัสเป้าหมายอื่นนอกจากการเอาชีวิตรอด" } },
+          { t:"'ลดค่าใช้จ่ายลงก่อน อยู่ให้เรียบง่ายขึ้นสักพัก'", city:0, nature:2, priv:0, tag:{ sens:"คุณตอบสนองต่อวิกฤตด้วยการกลับไปคุมสิ่งที่คุมได้—การใช้ชีวิตให้เบาลง", power:"คุณอาจไม่ได้มีทุนสำรองมาก แต่มีทักษะในการปรับตัวภายใต้ข้อจำกัด", values:"คุณเชื่อว่าความพอเพียงสำคัญกว่าการรักษาภาพลักษณ์" } },
+          { t:"'คุยกับครอบครัว/คนไว้ใจ ขอคำแนะนำหรือช่วยกันหาทางออก'", city:0, nature:2, priv:1, tag:{ sens:"คุณไม่แบกวิกฤตไว้คนเดียว คุณมองว่าความสัมพันธ์คือที่พักใจ", power:"คุณใช้ 'ความสัมพันธ์' เป็นทุนรูปแบบหนึ่ง", values:"คุณให้ค่ากับการพึ่งพาอาศัยและการไม่โดดเดี่ยว" } }
+        ]
+      },
+      {
+        arc:"Phase 1: อาการบนผิวน้ำ",
+        cat:"Code-Switching",
+        q:"เวลาต้องสลับบทบาทระหว่าง 'การเป็นคนในเมือง/ที่ทำงาน' กับ 'การเป็นลูก/คนของที่บ้าน' คุณรู้สึกอย่างไร?",
+        options:[
+          { t:"รู้สึกเหมือนต้อง 'เปลี่ยนร่าง' ซ่อนบางส่วนของตัวเองไว้เพื่อให้ทุกฝ่ายสบายใจ", city:2, nature:0, priv:0, tag:{ sens:"คุณใช้พลังงานมหาศาลกับการสวมบทบาทเพื่อความอยู่รอดทางสังคม", power:"ความคาดหวังของคนรอบตัวทำให้คุณต้องแลก 'ความเป็นตัวเอง' กับการยอมรับ", values:"คุณให้ค่ากับความสัมพันธ์ แต่ต้องแลกด้วยการกดทับบางส่วนของตัวตน" } },
+          { t:"ฉันสลับบทบาทได้เก่ง มันเป็นทักษะที่ทำให้ฉันไปได้ไกล", city:2, nature:0, priv:2, tag:{ sens:"คุณควบคุมภาพลักษณ์ได้ดี และจัดการความกดดันได้เป็นระบบ", power:"คุณมีทุนทางสังคม/ทักษะที่ทำให้การเดินในระบบง่ายขึ้น", values:"คุณให้ค่ากับความก้าวหน้าและความสามารถในการปรับตัว" } },
+          { t:"ไม่ต่างกันมาก ฉันเป็นตัวเองได้ค่อนข้างเต็มที่ในทั้งสองพื้นที่", city:0, nature:2, priv:1, tag:{ sens:"ร่างกายและใจคุณไม่ต้องเกร็งมาก เพราะตัวตนค่อนข้างสอดคล้อง", power:"คุณไม่ถูกบีบให้สวมหน้ากากหนักๆ", values:"คุณให้ค่ากับความจริงใจและความเป็นตัวเอง" } },
+          { t:"ฉันรู้สึกว่าอยู่ ‘กลางๆ’ ไม่ใช่ของที่ใดที่หนึ่ง แต่ก็เข้าใจทั้งสองฝั่ง", city:1, nature:1, priv:1, tag:{ sens:"คุณรับรู้ความต่างของโลกสองใบพร้อมกัน ทำให้บางครั้งรู้สึกโดดเดี่ยว", power:"คุณมองเห็นโครงสร้างชัดกว่าคนส่วนใหญ่ เพราะคุณยืนอยู่บนสะพาน", values:"คุณให้ค่ากับการเชื่อมโยงและความเข้าใจข้ามมุมมอง" } }
+        ]
+      },
+      {
+        arc:"Phase 1: อาการบนผิวน้ำ",
+        cat:"Story / Emotion",
+        q:"เวลาโทรกลับบ้านเกิด หรือคุยกับครอบครัว เรื่องไหนที่คุณมักจะ 'เลี่ยง' พูดความจริงที่สุด?",
+        options:[
+          { t:"ความเหนื่อยล้า/กดดัน/ความเครียด (ไม่อยากให้เขาเป็นห่วง)", city:2, nature:0, priv:0, tag:{ sens:"", power:"คุณรับบท 'ผู้แบกรับ' ความหวังไว้บนบ่าเพียงลำพัง", values:"คุณปกป้องคนที่รักด้วยการเก็บซ่อนความอ่อนแอ" } },
+          { t:"ความฝันที่แตกต่าง/ตัวตนที่เปลี่ยนไป (กลัวเขาไม่เข้าใจหรือผิดหวัง)", city:0, nature:2, priv:0, tag:{ sens:"", power:"คุณถูกกดทับด้วยค่านิยม/ความคาดหวังของครอบครัวหรือชุมชน", values:"คุณต้องการการยอมรับในสิ่งที่คุณเป็นจริงๆ" } },
+          { t:"เรื่องความสำเร็จ/โอกาสที่กำลังไล่ล่าอยู่ (กลัวพูดแล้วกดดันตัวเองมากขึ้น)", city:2, nature:0, priv:1, tag:{ sens:"คุณอยู่กับความคาดหวังจนบางครั้งกลัวจะพูดแล้วทำให้มันกลายเป็นภาระ", power:"ระบบความสำเร็จทำให้คุณต้องวิ่งต่อ แม้ยังไม่แน่ใจว่าไหวไหม", values:"คุณให้ค่ากับการเติบโต แต่ก็กลัวราคาที่ต้องจ่าย" } },
+          { t:"เรื่องเงิน/หนี้/ภาระจริงๆ (เพราะไม่อยากให้บ้านรู้ว่าเรา ‘กำลังสู้’ แค่ไหน)", city:1, nature:1, priv:0, tag:{ sens:"ความตึงในตัวคุณมาจากการต้องทำตัวให้ ‘เข้มแข็ง’ ตลอดเวลา", power:"ความไม่เท่าเทียมของทุนและโอกาสทำให้คุณต้องใช้แรงใจแทนเครื่องมือ", values:"คุณให้ค่ากับศักดิ์ศรีและความรับผิดชอบ" } }
+        ]
+      },
+      {
+        arc:"Phase 2: การดิ้นรนใต้ผิวน้ำ",
+        cat:"Context / Reaction",
+        q:"เมื่อมีคนพูดถึง 'คนต่างจังหวัด' หรือ 'คนเมือง' ในแง่เหมารวม (Stereotype) คุณมักจะ...",
+        options:[
+          { t:"ปล่อยผ่านไป เพราะเหนื่อยที่จะอธิบายว่าชีวิตจริงมันซับซ้อนกว่านั้น", city:1, nature:1, priv:0, tag:{ sens:"คุณล้าจากการต้องอธิบายตัวเองซ้ำๆ ให้โลกที่ไม่อยากฟัง", power:"ป้ายชื่อที่คนอื่นแปะให้ ตัดทอนความเป็นมนุษย์ของคุณ", values:"คุณให้ค่ากับความสงบมากกว่าการชนะการถกเถียง" } },
+          { t:"พยายามพิสูจน์ตัวเองให้เห็นว่าฉันไม่ได้เป็นแบบที่เขาพูด", city:2, nature:0, priv:1, tag:{ sens:"คุณใช้ความพยายามเป็นเกราะป้องกันคำดูแคลน", power:"คุณกำลังต่อรองอำนาจด้วยผลงานและความสำเร็จ", values:"คุณให้ค่ากับศักดิ์ศรีและการไม่ถูกมองต่ำ" } },
+          { t:"อธิบายให้เขาเห็นมุมที่เขาไม่เคยเห็น (ไม่ใช่เพื่อชนะ แต่เพื่อให้เข้าใจ)", city:1, nature:1, priv:1, tag:{ sens:"คุณยังมีพลังพอจะเปิดพื้นที่สนทนา", power:"คุณพยายามรื้อกรอบเหมารวมด้วยการชวนเห็นความซับซ้อน", values:"คุณให้ค่ากับความเข้าใจและความเห็นอกเห็นใจ" } },
+          { t:"ปกป้องคนของฉัน/ชุมชนของฉัน เพราะเขาไม่ควรถูกตัดสินด้วยคำง่ายๆ", city:0, nature:2, priv:0, tag:{ sens:"คุณเจ็บแทนคนของคุณเมื่อถูกเหมารวม", power:"คุณรับรู้ถึงอำนาจของภาษาที่ทำร้ายคนที่ไม่มีเสียง", values:"คุณให้ค่ากับการยืนหยัดและการปกป้องความหมายของบ้าน" } }
+        ]
+      },
+      {
+        arc:"Phase 2: การดิ้นรนใต้ผิวน้ำ",
+        cat:"Iceberg: Needs",
+        q:"ในโลกปัจจุบัน ความเหนื่อยแบบไหนที่คุณรู้สึกว่า 'ยอมรับได้' เพราะมันคุ้มค่า?",
+        options:[
+          { t:"เหนื่อยที่ต้องแข่งขันและวิ่งตามมาตรฐาน แต่แลกมาด้วยการยกระดับคุณภาพชีวิต", city:2, nature:0, priv:1, tag:{ sens:"", power:"", values:"ความต้องการสูงสุดของคุณตอนนี้คือ 'การเติบโตและหลุดพ้นจากข้อจำกัดเดิม'" } },
+          { t:"เหนื่อยกับการทำมาหากินธรรมดา แต่ได้อยู่ใกล้คนรักและมีความสงบในใจ", city:0, nature:2, priv:0, tag:{ sens:"", power:"", values:"ความต้องการสูงสุดของคุณตอนนี้คือ 'ความผูกพันและการได้ใช้ชีวิตกับคนสำคัญ'" } },
+          { t:"เหนื่อยเพราะต้องประคองตัวเองในระบบที่ไม่แฟร์ แต่ฉันยังไม่สามารถหยุดได้", city:2, nature:0, priv:0, tag:{ sens:"ความเหนื่อยของคุณไม่ใช่แค่ร่างกาย แต่เป็นความรู้สึกถูกไล่ตามโดยเวลา", power:"คุณกำลังสู้ในระบบที่มีแรงเสียดทานสูง และไม่มีเบาะรองรับมากพอ", values:"คุณให้ค่ากับการอยู่รอดและการไม่พาคนข้างหลังลำบาก" } },
+          { t:"เหนื่อยเพื่อสร้าง ‘ทางเลือกใหม่’ ที่ยังรักษาตัวตนและความสงบไว้ได้", city:1, nature:2, priv:1, tag:{ sens:"คุณต้องการทั้งความสงบและความก้าวหน้าแบบไม่ต้องแลกทุกอย่าง", power:"คุณพยายามออกแบบชีวิตใหม่ในขณะที่ข้อจำกัดยังอยู่", values:"คุณให้ค่ากับอิสระและการใช้ชีวิตตามนิยามของตัวเอง" } }
+        ]
+      },
+      {
+        arc:"Phase 2: การดิ้นรนใต้ผิวน้ำ",
+        cat:"Inner Dimension",
+        q:"อะไรคือสิ่งที่ทำให้คุณรู้สึก 'แปลกแยก' (Alienated) ที่สุดในเส้นทางที่คุณเลือก?",
+        options:[
+          { t:"อยู่ที่นี่ก็เป็นฟันเฟือง กลับบ้านก็รู้สึกคุยกับคนเดิมๆ ไม่ค่อยรู้เรื่องแล้ว", city:2, nature:1, priv:0, tag:{ sens:"ความโดดเดี่ยวของคุณเกิดจากการลอยอยู่ตรงกลางระหว่างสองโลก", power:"", values:"คุณต้องการพื้นที่ที่ไม่ต้องแปลตัวเองให้ใครเข้าใจตลอดเวลา" } },
+          { t:"ต้องทำในสิ่งที่ไม่ได้เชื่อจริงๆ เพื่อแลกกับความอยู่รอดหรือการยอมรับ", city:1, nature:1, priv:0, tag:{ sens:"ความโดดเดี่ยวเกิดจากความขัดแย้งภายใน ระหว่างสิ่งที่ทำกับสิ่งที่เป็น", power:"โครงสร้างบีบให้คุณต้อง ‘เล่นเกม’ แม้ใจไม่อยากเล่น", values:"คุณให้ค่ากับความจริงใจและอยากมีชีวิตที่ไม่ต้องฝืน" } },
+          { t:"ฉันไม่ค่อยแปลกแยก—ฉันปรับตัวเก่ง อยู่ที่ไหนก็หาทางยืนได้", city:1, nature:1, priv:1, tag:{ sens:"คุณมีความยืดหยุ่นสูง และจัดการความต่างของบริบทได้", power:"คุณมีทักษะเอาตัวรอดที่ลดแรงเสียดทานของโครงสร้างลงได้บางส่วน", values:"คุณให้ค่ากับการอยู่รอดและความคล่องตัว" } },
+          { t:"ฉันแปลกแยกกับ ‘ความเร็ว’ ของโลก—อยากช้าลง แต่โลกไม่รอ", city:0, nature:2, priv:1, tag:{ sens:"ระบบประสาทของคุณไวต่อความเร่งรีบ จึงโหยหาความนิ่ง", power:"คุณต่อต้านอำนาจของความเร็วด้วยการกลับมาฟังตัวเอง", values:"คุณให้ค่ากับความสงบและการรักษาตัวเอง" } }
+        ]
+      },
+      {
+        arc:"Phase 2: การดิ้นรนใต้ผิวน้ำ",
+        cat:"Emotion / Perspective",
+        q:"เวลาที่คุณรู้สึกว่าตัวเอง 'ช้าไป' หรือ 'ตามเพื่อนไม่ทัน' ความรู้สึกนั้นมักมีต้นตอมาจาก...",
+        options:[
+          { t:"การเอาตัวเองไปเปรียบเทียบกับภาพความสำเร็จของคนอื่นในโซเชียล/ในเมืองใหญ่", city:2, nature:0, priv:0, tag:{ sens:"", power:"มาตรฐานของสังคมเมือง/การแข่งขัน กำลังเป็นตัวกำหนดความสุขของคุณ", values:"คุณให้ค่ากับความสำเร็จ แต่ก็ถูกมันกดดัน" } },
+          { t:"ความกังวลว่าคนที่อยู่ข้างหลัง (พ่อแม่/ครอบครัว) จะรอความสำเร็จของเราไม่ไหว", city:1, nature:1, priv:0, tag:{ sens:"", power:"แรงกดดันของคุณมาจากความรักและเส้นตายของเวลา ไม่ใช่แค่การแข่งขัน", values:"คุณให้ค่ากับความรับผิดชอบและการไม่ทำให้คนที่รักผิดหวัง" } },
+          { t:"ฉันไม่ได้รู้สึกช้า เพราะฉันไม่เล่นเกมแข่งกับใคร ฉันเดินตามจังหวะของตัวเอง", city:0, nature:2, priv:1, tag:{ sens:"คุณไม่ยอมให้เสียงรบกวนของโลกมาดึงคุณออกจากจังหวะของตัวเอง", power:"คุณยึดอำนาจกลับมาที่ตัวเอง ด้วยการเลือกนิยามความสำเร็จใหม่", values:"คุณให้ค่ากับความสงบและการเป็นตัวเอง" } },
+          { t:"ฉันรู้สึกทั้งช้าและเร็วพร้อมกัน—เหมือนต้องวิ่ง แต่ก็อยากหยุดหายใจ", city:1, nature:1, priv:1, tag:{ sens:"คุณกำลังอยู่ในสภาวะตึง-หย่อนสลับกัน ระหว่างแรงผลักกับความล้า", power:"คุณเห็น trade-off ชัด ว่าการวิ่งมีราคา และการหยุดก็มีราคา", values:"คุณต้องการสมดุลระหว่างการเติบโตและการรักษาใจ" } }
+        ]
+      },
+      {
+        arc:"Phase 3: ก้นบึ้งของภูเขาน้ำแข็ง",
+        cat:"Iceberg: Core Values",
+        q:"ลึกๆ แล้ว การดิ้นรนทุกวันนี้ของคุณ เป็นการทำเพื่อ...",
+        options:[
+          { t:"'วิ่งหนี' จากความขาดแคลนหรืออดีตที่ไม่อยากกลับไปเจอ", city:2, nature:0, priv:0, tag:{ sens:"", power:"", values:"แรงขับเคลื่อนหลักของคุณคือบาดแผลและความปรารถนาจะเอาชนะข้อจำกัดเดิม" } },
+          { t:"'วิ่งหา' พื้นที่ปลอดภัย ความสงบ และอิสระที่จะได้ใช้ชีวิตแบบของตัวเอง", city:0, nature:2, priv:1, tag:{ sens:"", power:"", values:"แรงขับเคลื่อนหลักของคุณคือการสร้าง 'บ้าน' ในนิยามของคุณเอง" } },
+          { t:"'วิ่งหา' การยอมรับ/ศักดิ์ศรี—อยากให้โลกเห็นคุณค่าในตัวฉัน", city:2, nature:0, priv:1, tag:{ sens:"คุณแบกความคาดหวังไว้กับสายตาคนอื่นมากกว่าที่คุณคิด", power:"คุณกำลังต่อรองอำนาจด้วยการพิสูจน์ตัวเอง", values:"คุณต้องการการยอมรับและความภาคภูมิใจในตัวเอง" } },
+          { t:"'วิ่งหา' ความหมาย—ไม่อยากให้ชีวิตเป็นแค่การแข่งขัน แต่เป็นชีวิตที่ ‘มีเหตุผล’", city:0, nature:2, priv:1, tag:{ sens:"คุณไวต่อความว่างเปล่าของการแข่งขัน จึงมองหาแก่นแท้", power:"คุณไม่ยอมให้โครงสร้างกำหนดคุณค่าของชีวิตทั้งหมด", values:"คุณให้ค่ากับความหมายและการเชื่อมโยงกับตัวตน" } }
+        ]
+      },
+      {
+        arc:"Phase 3: ก้นบึ้งของภูเขาน้ำแข็ง",
+        cat:"Perspective Taking",
+        q:"ลองจินตนาการถึงเพื่อนที่เลือกเส้นทางตรงข้ามกับคุณ คุณคิดว่าเขากำลัง 'แอบอิจฉา' อะไรในตัวคุณ?",
+        options:[
+          { t:"อิสระที่ฉันได้หลุดพ้นจากกรอบเดิมๆ และโอกาสที่ได้เห็นโลกกว้าง", city:2, nature:1, priv:1, tag:{ sens:"คุณตระหนักว่า ‘อิสระในการเลือก’ คืออภิสิทธิ์อย่างหนึ่ง", power:"", values:"คุณให้ค่ากับเสรีภาพและการได้ออกแบบชีวิต" } },
+          { t:"ความมั่นคงทางวัตถุ แม้ฉันจะแลกมาด้วยเวลาและความสุขส่วนตัว", city:1, nature:0, priv:0, tag:{ sens:"", power:"คุณมองเห็นราคา (Trade-off) ของสิ่งที่ทุกคนต้องจ่ายในแบบของตัวเอง", values:"คุณให้ค่ากับความมั่นคง แต่ก็ไม่อยากเสียตัวตนไป" } },
+          { t:"ความผูกพันกับบ้าน/ชุมชน—ฉันยังมีคนที่ ‘เป็นของฉัน’ อย่างแท้จริง", city:0, nature:2, priv:0, tag:{ sens:"คุณรับรู้ถึงพลังของการมีที่พึ่งทางใจ", power:"ความสัมพันธ์คือทุนที่ไม่อยู่ในระบบเงิน", values:"คุณให้ค่ากับการเป็นส่วนหนึ่งของบางสิ่งที่ใหญ่กว่าตัวเอง" } },
+          { t:"ความสามารถในการเข้าใจทั้งสองโลก—เหมือนฉันเป็นสะพานให้คนต่างกันมองเห็นกัน", city:1, nature:1, priv:1, tag:{ sens:"คุณมีความละเอียดอ่อนต่อความต่างและความขัดแย้ง", power:"คุณมองเห็นโครงสร้างชัด และพยายามลดการตัดสินกัน", values:"คุณให้ค่ากับ empathy และ perspective taking" } }
+        ]
+      },
+      {
+        arc:"Phase 3: ก้นบึ้งของภูเขาน้ำแข็ง",
+        cat:"Iceberg: Core Need",
+        q:"นิยามความสำเร็จสูงสุดในใจคุณ ณ วันนี้ หน้าตาเป็นอย่างไร?",
+        options:[
+          { t:"อิสระทางการเงินและสถานะที่มั่นคงพอ จะไม่ต้องก้มหัวให้ระบบหรือใครอีก", city:2, nature:0, priv:1, tag:{ sens:"", power:"คุณต้องการดึง 'อำนาจ' กลับมาอยู่ในมือตัวเอง ผ่านความสำเร็จทางโลก", values:"คุณให้ค่ากับอิสระและการไม่ถูกบังคับ" } },
+          { t:"ตื่นมาโดยไม่ต้องกังวลเรื่องพรุ่งนี้ และมีเวลาให้คนที่รักอย่างเต็มที่", city:0, nature:2, priv:0, tag:{ sens:"", power:"คุณต้องการปลดแอกตัวเองจากระบบ ด้วยการกลับคืนสู่ความเรียบง่าย", values:"คุณให้ค่ากับความสัมพันธ์และความสงบ" } },
+          { t:"ได้เติบโตและไปไกล โดยไม่ต้องเผาใจตัวเองจนพัง", city:1, nature:1, priv:1, tag:{ sens:"คุณเริ่มฟังร่างกายและใจมากขึ้น ว่ามันรับไหวแค่ไหน", power:"คุณกำลังต่อรองกับระบบด้วยการตั้งขอบเขต", values:"คุณให้ค่ากับสมดุลและความยั่งยืน" } },
+          { t:"ได้กลับมาอยู่กับตัวเอง ไม่ต้องพิสูจน์อะไรให้ใคร—แค่ใช้ชีวิตอย่างมีความหมาย", city:0, nature:2, priv:1, tag:{ sens:"คุณไวต่อเสียงข้างในมากกว่ารางวัลข้างนอก", power:"คุณไม่ยอมให้ระบบนิยามคุณค่าของชีวิตทั้งหมด", values:"คุณให้ค่ากับความหมายและความสงบภายใน" } }
+        ]
+      },
+      {
+        arc:"Phase 3: ก้นบึ้งของภูเขาน้ำแข็ง",
+        cat:"Totem",
+        q:"สุดท้าย... หากทุกอย่างพังทลาย สิ่งใดคือสิ่งที่คุณตั้งใจจะ 'รักษาไว้' ไม่ว่าโลกใบนี้จะบีบคั้นคุณแค่ไหน?",
+        options:[
+          { t:"ความสามารถในการพาตัวเองรอด และสติปัญญาที่จะเริ่มต้นใหม่ที่ไหนก็ได้", city:2, nature:0, priv:1, icon:"🧭", tag:{ sens:"", power:"คุณดึงอำนาจกลับมาผ่านทักษะและการปรับตัว—นี่คือทุนที่ไม่มีใครริบไปได้", values:"คุณยึดถือศักยภาพของตัวเองเป็นที่พึ่งสุดท้าย" } },
+          { t:"ความทรงจำถึงตัวตนเดิม รากเหง้า และความรักที่มีต่อผู้คนในชีวิต", city:0, nature:2, priv:0, icon:"🌱", tag:{ sens:"", power:"คุณต่อต้านโครงสร้างด้วยการรักษาความเป็นมนุษย์เอาไว้", values:"คุณยึดถือความสัมพันธ์และรากเหง้าเป็นที่พึ่งพิงสุดท้าย" } },
+          { t:"ความเงียบลึกและการฟังใจตัวเอง—ไม่ยอมให้โลกดึงฉันไปจนหลงทาง", city:0, nature:2, priv:1, icon:"🍃", tag:{ sens:"คุณไวต่อความเร่งรีบและเสียงรบกวน จึงเลือกความนิ่งเป็นการเยียวยา", power:"คุณรักษาอำนาจของตัวเองด้วยการไม่ยอมให้โลกกำหนดจังหวะภายใน", values:"คุณยึดถือความสงบและความหมายเป็นหลัก" } },
+          { t:"ความหวังที่จะไปไกลกว่าเดิม—เพื่อให้ชีวิตมีทางเลือกมากขึ้น", city:2, nature:0, priv:1, icon:"🏙️🪜", tag:{ sens:"", power:"คุณใช้ระบบ/เครือข่าย/โอกาสเป็นบันได เพื่อดึงตัวเองขึ้นจากข้อจำกัด", values:"คุณยึดถือการเติบโตและความก้าวหน้าเป็นพลังหลัก" } }
+        ]
+      }
+    ];
+
+    // --- 8 Archetypes Logic ---
+    const ARCHETYPES = {
+      URBAN_STRIVER: {
+        key: "URBAN_STRIVER", title: "หนูเมือง-นักไต่บันได (Urban Striver)", icon: "🏙️🪜",
+        desc: "เชื่อในโอกาส ใช้ระบบ/เครือข่าย เก่งเรื่องเดินเกมในโครงสร้าง",
+        quote: "“ฉันไม่อยากพลาดโอกาส แม้ต้องเหนื่อย”",
+        oppositeHint: "ROOTED_GUARDIAN"
+      },
+      URBAN_BURNOUT: {
+        key: "URBAN_BURNOUT", title: "หนูเมือง-เหนื่อยล้า (Urban Burnout)", icon: "🏙️😮‍💨",
+        desc: "อยู่เมืองได้ แต่ใจล้า มีทางเลือกบางส่วน แต่แลกด้วยพลังใจ/เวลาชีวิต",
+        quote: "“ฉันวิ่งทัน…แต่ฉันเหนื่อย”",
+        oppositeHint: "INNER_LISTENER"
+      },
+      ROOTED_GUARDIAN: {
+        key: "ROOTED_GUARDIAN", title: "หนูนา-ผู้ยึดราก (Rooted Guardian)", icon: "🌾🛖",
+        desc: "ให้ค่าบ้าน/ชุมชน ชีวิตอาจไม่ได้ง่าย แต่มีความหมายลึกและยืนหยัด",
+        quote: "“ฉันอาจไม่มีทุกอย่าง แต่ฉันมีบ้าน”",
+        oppositeHint: "URBAN_STRIVER"
+      },
+      RURAL_DREAMER: {
+        key: "RURAL_DREAMER", title: "หนูนา-ใฝ่ฝันไกล (Rural Dreamer)", icon: "🌾✨",
+        desc: "รากอยู่บ้าน แต่ใจมองไกล อยากเติบโตและมีโอกาสมากขึ้น",
+        quote: "“ฉันไม่ได้อยากหนี ฉันแค่อยากมีโอกาส”",
+        oppositeHint: "BRIDGE_MOUSE"
+      },
+      BRIDGE_MOUSE: {
+        key: "BRIDGE_MOUSE", title: "หนูสะพาน (Bridge Mouse)", icon: "🌗🌉",
+        desc: "เข้าใจทั้งเมืองและชนบท เห็นโครงสร้างชัด เป็น ‘ทางเชื่อม’ ระหว่างโลก",
+        quote: "“ฉันไม่ใช่ของที่ใดที่หนึ่ง ฉันคือทางเชื่อม”",
+        oppositeHint: "LOST_IN_STRUCTURE"
+      },
+      LOST_IN_STRUCTURE: {
+        key: "LOST_IN_STRUCTURE", title: "หนูไร้แผนที่ (Lost in Structure)", icon: "🧩🕳️",
+        desc: "ไม่ใช่ไม่พยายาม แต่ ‘ทางเลือก’ ในโครงสร้างน้อย ทำให้เหมือนเดินในหมอก",
+        quote: "“ไม่ใช่ว่าฉันไม่พยายาม…แต่ฉันไม่เห็นทาง”",
+        oppositeHint: "ADAPTIVE_SURVIVOR"
+      },
+      ADAPTIVE_SURVIVOR: {
+        key: "ADAPTIVE_SURVIVOR", title: "หนูนักปรับตัว (Adaptive Survivor)", icon: "🧭🧱",
+        desc: "อยู่ที่ไหนก็เอาตัวรอดได้ ใช้ทั้งเครือข่ายและชุมชน ไม่ยึดติดอัตลักษณ์เดียว",
+        quote: "“ฉันไม่ยึดติด ฉันอยู่รอด”",
+        oppositeHint: "LOST_IN_STRUCTURE"
+      },
+      INNER_LISTENER: {
+        key: "INNER_LISTENER", title: "หนูเงียบลึก (Inner Listener)", icon: "🍃🫧",
+        desc: "ให้ค่าภายในมากกว่าโครงสร้าง ไม่แข่งขัน ไม่รีบ แต่อ่านใจตัวเองชัด",
+        quote: "“ฉันไม่ได้ช้า ฉันแค่ฟังลึก”",
+        oppositeHint: "URBAN_BURNOUT"
+      }
+    };
+
+    function hasGrowthDrive(text=""){
+      const t = text.toLowerCase();
+      return ["เติบโต","โอกาส","ยกระดับ","หลุดพ้น","ความสำเร็จ","แข่งขัน","มาตรฐาน","สถานะ","การเงิน","ก้าวหน้า"].some(k => t.includes(k));
+    }
+    function hasHomeDrive(text=""){
+      const t = text.toLowerCase();
+      return ["บ้าน","ชุมชน","คนรัก","สงบ","เรียบง่าย","หยั่งราก","ความหมาย","ปลอดภัย"].some(k => t.includes(k));
+    }
+
+    function determineArchetype({pctCity, pctNature, pctPriv, deep}) {
+      if (pctPriv <= 30 && pctCity > 35 && pctCity < 65) return ARCHETYPES.LOST_IN_STRUCTURE;
+      if (pctCity >= 65) {
+        if (pctPriv >= 60) return ARCHETYPES.URBAN_STRIVER;
+        return ARCHETYPES.URBAN_BURNOUT;
+      }
+      if (pctCity <= 35) {
+        if (hasHomeDrive(deep.values) || pctPriv <= 55) return ARCHETYPES.ROOTED_GUARDIAN;
+        return ARCHETYPES.INNER_LISTENER;
+      }
+      const growth = hasGrowthDrive(deep.values);
+      const home = hasHomeDrive(deep.values);
+      if (pctCity >= 40 && pctCity <= 60 && pctPriv >= 45 && pctPriv <= 80) return ARCHETYPES.BRIDGE_MOUSE;
+      if (pctNature >= 55 && growth) return ARCHETYPES.RURAL_DREAMER;
+      if (pctPriv >= 40 && pctPriv <= 80) return ARCHETYPES.ADAPTIVE_SURVIVOR;
+      
+      if (home) return ARCHETYPES.INNER_LISTENER;
+      return ARCHETYPES.BRIDGE_MOUSE;
+    }
+
+    function perspectiveStory(archetype){
+      const k = archetype.oppositeHint;
+      const opposite = ARCHETYPES[k] || ARCHETYPES.BRIDGE_MOUSE;
+      const stories = {
+        URBAN_STRIVER: "อีกฟากของเขาวงกตมีคนที่ยึดรากไว้แน่น…เขาไม่ได้ ‘ไม่สู้’ แต่อาจกำลังสู้เพื่อรักษาบ้านและความหมายไว้ ในโลกที่โอกาสไม่ได้กระจายเท่ากัน",
+        URBAN_BURNOUT: "อีกฟากของเขาวงกตมีคนที่ฟังตัวเองลึก…เขาไม่ได้ ‘ช้า’ แต่อาจกำลังพยายามไม่ให้ชีวิตกลายเป็นการแข่งขันที่ไม่มีวันจบ",
+        ROOTED_GUARDIAN: "อีกฟากของเขาวงกตมีคนที่ไต่บันไดเมือง…เขาไม่ได้ ‘โลภ’ แต่อาจกำลังพยายามสร้างทางเลือกให้ตัวเองและคนที่รักในระบบที่โหดร้าย",
+        RURAL_DREAMER: "อีกฟากของเขาวงกตมีคนที่เป็นสะพาน…เขาอยู่กลางสองโลกและพยายามทำให้คนต่างกันมองเห็นกันมากขึ้น",
+        BRIDGE_MOUSE: "อีกฟากของเขาวงกตมีคนที่หลงทางในโครงสร้าง…เขาไม่ได้ ‘ไม่พยายาม’ แต่บางทีเขาแค่ไม่มีแผนที่และเครื่องมือเหมือนคนอื่น",
+        LOST_IN_STRUCTURE: "อีกฟากของเขาวงกตมีคนที่ปรับตัวเก่ง…เขาไม่ได้ ‘เก่งกว่า’ เสมอไป แต่เขาอาจมีเครื่องมือ/เครือข่ายที่ช่วยลดแรงเสียดทานได้มากกว่า",
+        ADAPTIVE_SURVIVOR: "อีกฟากของเขาวงกตมีคนที่หลงทาง…เขาไม่ได้ด้อยค่า เขาแค่ถูกโครงสร้างทำให้ทางเลือกแคบลงในช่วงหนึ่งของชีวิต",
+        INNER_LISTENER: "อีกฟากของเขาวงกตมีคนเมืองที่เหนื่อยล้า…เขาไม่ได้ไม่รักตัวเอง แต่เขาอาจต้องวิ่งเพื่อให้ทันเส้นตายของชีวิตและความคาดหวัง"
+      };
+      return { story: stories[archetype.key], quote: archetype.quote };
+    }
+
+    // --- Care Packages (ปรับให้เข้ากับ Archetypes/Mode) ---
+    const carePackages = {
+      URBAN_STRIVER: {
+        movie: { title: "The Secret Life of Walter Mitty (2013)", desc: "ภาพยนตร์ที่เชิญชวนให้คนที่ติดอยู่ในกรอบความสำเร็จ ออกเดินทางไปสัมผัสโลกกว้างและชีวิตจริงที่ไม่ได้มีแค่เรื่องงานและการแข่งขัน" },
+        song: { title: "Vienna - Billy Joel", desc: "‘Slow down you crazy child...’ บทเพลงที่คอยเตือนสติว่าคุณไม่ต้องรีบเร่งจนลืมหายใจ ทุกอย่างมีจังหวะเวลาของมัน" },
+        book: { title: "สิ่งที่ค้นพบระหว่างนั่งเฉยๆ (Haemin Sunim)", desc: "หนังสือที่จะช่วยดึงจังหวะชีวิตที่หมุนไวให้ช้าลง เพื่อให้คุณมองเห็นจิตใจตัวเองและสิ่งที่สำคัญจริงๆ อีกครั้ง" }
+      },
+      URBAN_BURNOUT: {
+        movie: { title: "Soul (2020)", desc: "แอนิเมชันที่จะกอดคุณเบาๆ และเตือนสติว่า 'เป้าหมาย' ไม่ใช่ความหมายเดียวของการมีชีวิต การได้ตื่นมารับแสงแดดก็คือความหมายแล้ว" },
+        song: { title: "Fix You - Coldplay", desc: "บทเพลงแห่งการปลอบประโลมในวันที่คุณสู้จนสุดแรงแต่เหมือนไม่มีอะไรดีขึ้น อนุญาตให้ตัวเองอ่อนแอบ้างนะ" },
+        book: { title: "ฉันไม่ได้ขี้เกียจ แค่กำลังชาร์จพลัง", desc: "หนังสือที่ยืนยันกับคุณว่า การที่คุณเหนื่อยล้า อยากหยุดพัก และไม่วิ่งตามใคร ไม่ใช่เรื่องผิดเลย" }
+      },
+      ROOTED_GUARDIAN: {
+        movie: { title: "Little Forest (2014)", desc: "ภาพยนตร์เยียวยาจิตใจ ว่าด้วยเรื่องราวของการกลับบ้านเกิด ทำอาหารตามฤดูกาล และปล่อยให้ธรรมชาติซ่อมแซมหัวใจ" },
+        song: { title: "Home - Michael Bublé", desc: "เพลงอุ่นๆ ที่จะคอยย้ำเตือนว่า ไม่ว่าโลกภายนอกจะวุ่นวายแค่ไหน ยังมีพื้นที่ปลอดภัยที่รอคุณอยู่เสมอ" },
+        book: { title: "ความสุขของกะทิ (งามพรรณ เวชชาชีวะ)", desc: "วรรณกรรมที่งดงามด้วยภาษาและความรู้สึก สะท้อนความสุขในชีวิตเรียบง่ายที่คุณโหยหาและหวงแหน" }
+      },
+      RURAL_DREAMER: {
+        movie: { title: "Lady Bird (2017)", desc: "ภาพยนตร์ว่าด้วยความขัดแย้งในใจของคนที่อยากบินหนีจากบ้านเกิดเพื่อเติบโต แต่ก็ยังรักและผูกพันกับรากเหง้าของตัวเอง" },
+        song: { title: "A Million Dreams - The Greatest Showman", desc: "บทเพลงที่เป็นตัวแทนของคนที่กล้าฝันไกล แม้ว่าสิ่งรอบตัวและข้อจำกัดในตอนนี้จะยังพยายามรั้งตัวเขาไว้ก็ตาม" },
+        book: { title: "ขุมทรัพย์สุดปลายฝัน (The Alchemist)", desc: "การเดินทางตามหาความฝันที่อยู่ไกลแสนไกล เพื่อค้นพบว่าสิ่งที่มีค่าที่สุดอาจซ่อนอยู่ที่จุดเริ่มต้น" }
+      },
+      BRIDGE_MOUSE: {
+        movie: { title: "Past Lives (2023)", desc: "ภาพยนตร์ที่งดงามและเจ็บปวด ว่าด้วยตัวตนที่เราทิ้งไว้ข้างหลังและตัวตนที่เราต้องเป็นในปัจจุบัน เหมาะกับคนที่รู้สึกอยู่กึ่งกลางสองโลก" },
+        song: { title: "Somewhere Only We Know - Keane", desc: "บทเพลงแห่งการโหยหา 'พื้นที่ปลอดภัย' พื้นที่เล็กๆ ที่มีแค่เราและคนที่เข้าใจ ท่ามกลางโลกที่สับสนและบีบคั้น" },
+        book: { title: "เด็กชาย นกนางนวล และแมว (The Boy, the Mole...)", desc: "หนังสือภาพและปรัชญาที่ปลอบประโลมคนหลงทางได้ดีที่สุด อ่านแล้วคุณจะรู้สึกว่าความสับสนไม่ใช่เรื่องน่าอาย" }
+      },
+      LOST_IN_STRUCTURE: {
+        movie: { title: "A Street Cat Named Bob (2016)", desc: "เรื่องราวสร้างแรงบันดาลใจของคนที่ถูกสังคมทอดทิ้ง แต่หาทางเยียวยาและยืนหยัดขึ้นมาได้ด้วยความหวังและความรักเล็กๆ" },
+        song: { title: "ร่มสีเทา - วัชราวลี", desc: "เพื่อตอกย้ำความจริงที่ว่า โลกใบนี้มีโครงสร้างบางอย่างที่เราควบคุมไม่ได้ การกางร่มและปล่อยวางคือวิธีดูแลใจตัวเอง" },
+        book: { title: "Reasons to Stay Alive (แด่ผู้แหลกสลาย)", desc: "หนังสือที่จับมือคุณไว้ในวันที่โลกรอบตัวดูมืดมน ยืนยันว่าคุณไม่ได้ผิดปกติ และคุณจะผ่านโลกที่โหดร้ายนี้ไปได้" }
+      },
+      ADAPTIVE_SURVIVOR: {
+        movie: { title: "Everything Everywhere All at Once (2022)", desc: "การรับบทบาทนับพันในชีวิตที่วุ่นวาย แต่สุดท้ายแก่นแท้คือการกลับมาโอบกอดตัวตนและความสัมพันธ์ที่อยู่ตรงหน้า" },
+        song: { title: "This Is Me - The Greatest Showman", desc: "เพลงปลุกพลังให้คนที่ต้องสวมหน้ากากปรับตัวมาตลอด ได้กล้าที่จะยืนหยัดในตัวตนที่แท้จริงแบบไม่ต้องขอโทษใคร" },
+        book: { title: "กล้าที่จะถูกเกลียด (The Courage to be Disliked)", desc: "หนังสือจิตวิทยาปรัชญาที่จะช่วยปลดล็อกคุณจากการต้องคอยปรับตัวให้เข้ากับความคาดหวังของสังคมตลอดเวลา" }
+      },
+      INNER_LISTENER: {
+        movie: { title: "Perfect Days (2023)", desc: "ภาพยนตร์ที่เล่าถึงความงดงามในกิจวัตรประจำวันที่ดูซ้ำซากและเงียบสงบ แต่เต็มไปด้วยความลึกซึ้งของการตระหนักรู้" },
+        song: { title: "Holocene - Bon Iver", desc: "เพลงที่มีซาวด์แวดล้อมเหมือนหมอกยามเช้า สะท้อนความยิ่งใหญ่ของธรรมชาติ และการยอมรับความสงบภายในตัวเรา" },
+        book: { title: "ศิลปะแห่งการพักผ่อน (The Art of Rest)", desc: "หนังสือที่ให้คุณค่ากับ 'ความนิ่ง' ซึ่งสอดคล้องกับจิตวิญญาณของคุณที่โหยหาความเงียบสงบมากกว่ารางวัลจากภายนอก" }
+      }
+    };
+
+
+    const mockEchoes = [
+      "ส่งเงินกลับบ้านทุกเดือนจนที่บ้านคิดว่าสบายแล้ว แต่จริงๆ เรากินมาม่าแทบทุกมื้อ...",
+      "พอกลับบ้านก็พบว่าเราคุยกับเพื่อนเก่าไม่รู้เรื่องแล้วเหมือนกัน รู้สึกเป็นคนแปลกหน้าในทุกที่",
+      "บางทีก็รู้สึกผิดที่เลือกจะทิ้งพ่อแม่มาทำตามความฝันตัวเอง มันทั้งมีความสุขและเจ็บปวด",
+      "อยากหยุดพักสักวันแบบไม่ต้องรู้สึกผิดว่ากำลังเสียเวลาชีวิตไปเปล่าๆ",
+      "การยิ้มตอนวีดีโอคอลกลับบ้าน ใช้พลังงานมากกว่าการทำงานทั้งวันเสียอีก",
+      "เราอยากกลับไปอยู่ที่บ้านนะ แต่ความจริงคือมันไม่มีงานและสวัสดิการอะไรพยุงเราเลย"
+    ];
+
+    // --- State & App Logic ---
+    let currentStep = 0;
+    let history = [];
+    let score = { city:0, nature:0, priv:0 };
+    let deep  = { sensory:"", power:"", values:"" };
+    let currentAudioSrc = "";
+
+    function enterExperience() {
+      const gate = document.getElementById("entry-gate");
+      const landing = document.getElementById("landing-page");
+      const audioUi = document.getElementById("audio-ui");
+      
+      gate.classList.add("opacity-0");
+      
+      const audio = document.getElementById("ambient-audio");
+      audio.volume = 0.5;
+      audio.src = startAmbient;
+      currentAudioSrc = startAmbient;
+      audio.play().catch(e => console.log("Audio play failed:", e));
+
+      setTimeout(() => {
+        gate.classList.add("hidden");
+        landing.classList.remove("hidden");
+        landing.classList.add("fade-in-slow");
+        audioUi.classList.remove("hidden");
+        audioUi.classList.add("fade-in");
+      }, 1000);
+    }
+
+    function transitionAudioTo(newSrc, newVolume = 0.5) {
+      const audio = document.getElementById("ambient-audio");
+      if(audio.src.includes(newSrc.split("/").pop()) || currentAudioSrc === newSrc) return;
+      
+      currentAudioSrc = newSrc;
+      let vol = audio.volume;
+      const fadeOut = setInterval(() => {
+        if(vol > 0.05) {
+          vol -= 0.05;
+          audio.volume = vol;
+        } else {
+          clearInterval(fadeOut);
+          audio.src = newSrc;
+          audio.play().catch(()=>{});
+          let inVol = 0;
+          const fadeIn = setInterval(() => {
+            if(inVol < newVolume) {
+              inVol += 0.05;
+              audio.volume = inVol;
+            } else {
+              clearInterval(fadeIn);
+            }
+          }, 100);
+        }
+      }, 50);
+    }
+
+    function initQuiz(path){
+      document.getElementById("landing-page").classList.add("hidden");
+      document.getElementById("quiz-page").classList.remove("hidden");
+
+      const nextAudio = (path === "city") ? cityAmbient : ruralAmbient;
+      transitionAudioTo(nextAudio, 0.3);
+
+      setStageMode(path);
+      updateQuiz();
+    }
+
+    function setStageMode(mode){
+      const stage = document.getElementById("stage");
+      stage.classList.remove("rural","mixed");
+      if(mode==="rural") stage.classList.add("rural");
+      if(mode==="mixed") stage.classList.add("mixed");
+
+      const root = document.documentElement;
+      if(mode==="city"){
+        root.style.setProperty("--accent", "#0ea5e9"); 
+        root.style.setProperty("--pulse", "1.03");
+      } else if(mode==="rural"){
+        root.style.setProperty("--accent", "#10b981"); 
+        root.style.setProperty("--pulse", "1.00");
+      } else {
+        root.style.setProperty("--accent", "#a78bfa"); 
+        root.style.setProperty("--pulse", "1.015");
+      }
+
+      document.getElementById("category-tag").style.color = getComputedStyle(root).getPropertyValue("--accent");
+      document.getElementById("progress").style.backgroundColor = getComputedStyle(root).getPropertyValue("--accent");
+      if(document.getElementById("micro-reflection")) {
+        document.getElementById("micro-reflection").style.borderLeftColor = getComputedStyle(root).getPropertyValue("--accent");
+      }
+    }
+
+    function getModeFromScore(){
+      const diff = score.city - score.nature;
+      if(diff >= 4) return "city";
+      if(diff <= -4) return "rural";
+      return "mixed";
+    }
+
+    function updateQuiz(){
+      const data = questions[currentStep];
+      const total = questions.length;
+
+      document.getElementById("arc-tag").innerText = `${data.arc}`;
+      document.getElementById("step-tag").innerText = `${currentStep+1} / ${total}`;
+      document.getElementById("category-tag").innerText = data.cat;
+      document.getElementById("progress").style.width = `${((currentStep+1)/total)*100}%`;
+
+      const qEl = document.getElementById("question-text");
+      qEl.classList.remove("typing");
+      qEl.innerText = "";
+      typeText(qEl, data.q, 15); 
+
+      document.getElementById("back-btn").classList.toggle("hidden", history.length===0);
+
+      const mr = document.getElementById("micro-reflection");
+      mr.classList.add("hidden");
+
+      const grid = document.getElementById("options-grid");
+      grid.innerHTML = "";
+
+      const modeNow = getModeFromScore();
+      setStageMode(modeNow);
+
+      if(currentStep > 3) {
+        if(modeNow === "city") transitionAudioTo(cityAmbient, 0.25);
+        else if(modeNow === "rural") transitionAudioTo(ruralAmbient, 0.25);
+        else transitionAudioTo(startAmbient, 0.15);
+      }
+
+      data.options.forEach(opt=>{
+        const btn = document.createElement("button");
+        const mode = getModeFromScore();
+        btn.className = `choice-btn p-5 md:p-6 border border-white/10 rounded-2xl bg-white/5 hover:bg-white/10 text-left transition focus:outline-none focus:ring-2 focus:ring-white/20 glow ${mode}`;
+        btn.innerHTML = `<div class="text-base md:text-xl text-white/90 font-light leading-snug">${opt.t}</div>`;
+        btn.onclick = ()=> chooseOption(opt);
+        grid.appendChild(btn);
+      });
+    }
+
+    function typeText(el, text, speed=15){
+      el.classList.add("typing");
+      let i=0;
+      const timer = setInterval(()=>{
+        el.innerText += text[i] || "";
+        i++;
+        if(i >= text.length){
+          clearInterval(timer);
+          el.classList.remove("typing");
+        }
+      }, speed);
+    }
+
+    function chooseOption(opt){
+      history.push({ step: currentStep, score: {...score}, deep: {...deep} });
+
+      score.city += (opt.city||0);
+      score.nature += (opt.nature||0);
+      score.priv += (opt.priv||0);
+
+      if(opt.tag){
+        if(opt.tag.sens) deep.sensory = opt.tag.sens;
+        if(opt.tag.power) deep.power = opt.tag.power;
+        if(opt.tag.values) deep.values = opt.tag.values;
+      }
+
+      const mr = document.getElementById("micro-reflection");
+      setStageMode(getModeFromScore());
+
+      let reflectionText = "คุณรับรู้ถึงบางอย่างในตัวเอง...";
+      if(opt.tag){
+         if(opt.tag.values) reflectionText = opt.tag.values;
+         else if(opt.tag.power) reflectionText = opt.tag.power;
+         else if(opt.tag.sens) reflectionText = opt.tag.sens;
+      }
+      
+      mr.innerText = "เสียงสะท้อน: " + reflectionText;
+      mr.classList.remove("hidden");
+
+      setTimeout(()=>{
+        currentStep++;
+        if(currentStep < questions.length) updateQuiz();
+        else triggerBreathingSpace();
+      }, 1000); 
+    }
+
+    function goBack(){
+      if(!history.length) return;
+      const last = history.pop();
+      currentStep = last.step;
+      score = {...last.score};
+      deep  = {...last.deep};
+      updateQuiz();
+    }
+
+    function triggerBreathingSpace() {
+      document.getElementById("quiz-page").classList.add("hidden");
+      const breathePage = document.getElementById("breathe-page");
+      breathePage.classList.remove("hidden");
+
+      transitionAudioTo(startAmbient, 0.15);
+
+      const mode = getModeFromScore();
+      const icon = document.getElementById("breathe-icon");
+      if(mode === "city") { icon.innerText = "🏙️"; }
+      else if(mode === "rural") { icon.innerText = "🌾"; }
+      else { icon.innerText = "🌗"; }
+
+      const instruction = document.getElementById("breathe-instruction");
+      
+      setTimeout(() => { instruction.innerText = "ค่อยๆ ผ่อนลมหายใจออก..."; instruction.style.opacity = 0; }, 2500);
+      setTimeout(() => { instruction.style.opacity = 1; }, 3000);
+      
+      setTimeout(() => { instruction.innerText = "คุณเก่งมากแล้ว... วางความเหนื่อยไว้ตรงนี้ก่อนนะ"; instruction.style.opacity = 0; }, 6000);
+      setTimeout(() => { instruction.style.opacity = 1; }, 6500);
+
+      setTimeout(() => {
+        breathePage.classList.add("opacity-0");
+        setTimeout(() => {
+           breathePage.classList.add("hidden");
+           showFinal();
+        }, 1000);
+      }, 9500);
+    }
+
+    function showFinal(){
+      const result = document.getElementById("result-page");
+      result.classList.remove("hidden");
+
+      const totalIdentity = Math.max(1, score.city + score.nature);
+      const pctCity = Math.round((score.city/totalIdentity)*100);
+      const pctNature = 100 - pctCity;
+      const maxPriv = 18; 
+      const pctPriv = Math.max(0, Math.min(100, Math.round((score.priv/maxPriv)*100)));
+
+      const mode = (pctCity >= 60) ? "city" : (pctCity <= 40) ? "rural" : "mixed";
+      const archetype = determineArchetype({ pctCity, pctNature, pctPriv, deep });
+      
+      if(mode === "city") transitionAudioTo(cityAmbient, 0.15);
+      else if(mode === "rural") transitionAudioTo(ruralAmbient, 0.15);
+      else transitionAudioTo(startAmbient, 0.15);
+      
+      const root = document.documentElement;
+      let accentHex = "";
+      if(mode==="city") accentHex = "#0ea5e9";
+      else if(mode==="rural") accentHex = "#10b981";
+      else accentHex = "#a78bfa";
+      
+      root.style.setProperty("--accent", accentHex);
+      
+      result.style.background = (mode==="city")
+          ? "radial-gradient(1200px 800px at 50% 10%, rgba(14,165,233,.1), rgba(0,0,0,0)), linear-gradient(180deg, #05070a, #000)"
+          : (mode==="rural")
+            ? "radial-gradient(1200px 800px at 50% 10%, rgba(16,185,129,.08), rgba(0,0,0,0)), linear-gradient(180deg, #050a07, #000)"
+            : "radial-gradient(1200px 800px at 50% 10%, rgba(167,139,250,.08), rgba(0,0,0,0)), linear-gradient(180deg, #07050a, #000)";
+
+      const headline = document.getElementById("result-headline");
+      headline.innerText = archetype.title;
+      headline.style.color = accentHex;
+
+      document.getElementById("result-sub").innerText =
+        `ความเป็นเมือง ${pctCity}% / ความเป็นธรรมชาติ ${pctNature}% • Privilege ${pctPriv}%\nนี่ไม่ใช่คำตัดสิน แต่เป็น “กระจก” ให้เห็นโครงสร้าง + คุณค่า + ภาวะภายในของคุณ`;
+
+      setTimeout(() => {
+        document.getElementById("bar-city").style.width = `${pctCity}%`;
+        document.getElementById("bar-city").style.backgroundColor = accentHex;
+        document.getElementById("bar-nature").style.width = `${pctNature}%`;
+        document.getElementById("bar-nature").style.backgroundColor = (mode==="city") ? "#10b981" : (mode==="rural") ? "#0ea5e9" : "#a78bfa";
+        document.getElementById("bar-priv").style.width = `${pctPriv}%`;
+      }, 400);
+      
+      document.getElementById("pct-city").innerText = `${pctCity}%`;
+      document.getElementById("pct-nature").innerText = `${pctNature}%`;
+      document.getElementById("pct-priv").innerText = `${pctPriv}%`;
+
+      document.getElementById("res-sensory-border").style.borderLeftColor = accentHex;
+      document.getElementById("res-sensory").innerText = deep.sensory || "คุณรับรู้โลกผ่านจังหวะที่ตัวเองสร้างขึ้น เพื่อเป็นเกราะป้องกันจากความวุ่นวายภายนอก";
+      document.getElementById("res-power").innerText   = deep.power   || "คุณกำลังดิ้นรนอยู่ในโครงสร้างที่ไม่ได้ออกแบบมาให้เดินง่ายเสมอไป";
+      document.getElementById("res-values").innerText  = deep.values  || "ใต้พฤติกรรมทั้งหมดคือความต้องการพื้นฐาน—ความมั่นคง, การยอมรับ, อิสระ, หรือบ้าน";
+
+      document.getElementById("res-icon").innerText = archetype.icon;
+      document.getElementById("res-totem-title").innerText = archetype.desc;
+      document.getElementById("res-totem-desc").innerText = archetype.quote;
+
+      const p = perspectiveStory(archetype);
+      document.getElementById("opposite-story").innerText = p.story;
+      document.getElementById("final-quote").innerText = p.quote;
+
+      const cp = carePackages[archetype.key];
+      document.getElementById("cp-movie-title").innerText = cp.movie.title;
+      document.getElementById("cp-movie-desc").innerText = cp.movie.desc;
+      document.getElementById("cp-song-title").innerText = cp.song.title;
+      document.getElementById("cp-song-desc").innerText = cp.song.desc;
+      document.getElementById("cp-book-title").innerText = cp.book.title;
+      document.getElementById("cp-book-desc").innerText = cp.book.desc;
+    }
+
+    function submitReflection() {
+      const textarea = document.getElementById("user-reflection");
+      const text = textarea.value.trim();
+      
+      if(!text) {
+        alert("พิมพ์ความรู้สึกของคุณสักนิดก่อนปล่อยวางนะ");
+        return;
+      }
+
+      document.getElementById("vent-container").classList.add("hidden");
+      document.getElementById("echo-wall-container").classList.remove("hidden");
+
+      const grid = document.getElementById("echo-grid");
+      grid.innerHTML = "";
+
+      const userCard = document.createElement("div");
+      userCard.className = "echo-card p-6 rounded-2xl border-l-4 shadow-lg";
+      userCard.style.borderLeftColor = "var(--accent)";
+      userCard.innerHTML = `
+        <p class="text-white/95 text-lg font-light leading-relaxed">"${text}"</p>
+        <p class="text-xs text-white/50 mt-4 text-right tracking-wider">- ความรู้สึกที่คุณเพิ่งวางมันลง -</p>
+      `;
+      grid.appendChild(userCard);
+
+      const shuffled = mockEchoes.sort(() => 0.5 - Math.random()).slice(0, 4);
+      shuffled.forEach((echo, index) => {
+        setTimeout(() => {
+          const card = document.createElement("div");
+          card.className = "echo-card p-6 rounded-2xl fade-in";
+          card.innerHTML = `
+            <p class="text-white/70 text-lg font-light leading-relaxed">"${echo}"</p>
+            <p class="text-xs text-white/30 mt-4 text-right tracking-wider">- เสียงจากคนในโลกใบเดียวกัน -</p>
+          `;
+          grid.appendChild(card);
+        }, (index + 1) * 700);
+      });
+    }
+
+    function toggleMute(){
+      const audio = document.getElementById("ambient-audio");
+      audio.muted = !audio.muted;
+      document.getElementById("audio-status").innerText = audio.muted ? "Sensory Off" : "Sensory On";
+      
+      const btn = document.querySelector("#audio-ui button");
+      btn.innerText = audio.muted ? "🔇" : "🔈";
+    }
+
+    function copyResult(){
+      const headline = document.getElementById("result-headline").innerText;
+      const s1 = document.getElementById("pct-city").innerText;
+      const s2 = document.getElementById("pct-nature").innerText;
+      const songTitle = document.getElementById("cp-song-title").innerText;
+
+      const text =
+`ฉันคือ: ${headline}
+(เมือง ${s1} / ธรรมชาติ ${s2})
+
+สิ่งที่ซ่อนอยู่ใต้ภูเขาน้ำแข็งของฉัน:
+- ${document.getElementById("res-values").innerText}
+
+เยียวยาใจด้วยเพลง: ${songTitle}
+
+${document.getElementById("final-quote").innerText}
+ลองเข้ามาสำรวจพื้นที่ระหว่าง 2 โลก และวางความรู้สึกของคุณลงที่นี่ได้นะ`;
+
+      navigator.clipboard.writeText(text).then(()=> alert("คัดลอกผลลัพธ์แล้ว นำไปแชร์ต่อเพื่อให้คนเข้าใจโลกของคุณมากขึ้นได้เลย 🕊️"))
+      .catch(()=> alert("คัดลอกไม่สำเร็จ"));
+    }
+  </script>
+</body>
+</html>
